@@ -320,7 +320,7 @@
     <button class="daily-btn" onclick="dailyWaterAndFertilize()">💧 Tưới & Bón phân cho toàn vườn</button>
     
     <div style="font-size:14px; max-width:520px; opacity:0.95; color:white;">
-      Mỗi ngày chỉ cần tưới nước và bón phân cho toàn vườn một lần là cây sẽ tiến bộ 1 ngày.
+      Mỗi ngày chỉ được thực hiện một lần. Hoàn thành cả tưới và bón phân sẽ +1 ngày tiến độ cho cây.
     </div>
   </div>
 
@@ -465,7 +465,14 @@
         return;
       }
       const hashed = await simpleHash(password);
-      users.push({ username, password: hashed, highScore: 0, plots: [], created: new Date().toISOString() });
+      users.push({ 
+        username, 
+        password: hashed, 
+        highScore: 0, 
+        plots: [], 
+        lastActionDate: null,
+        created: new Date().toISOString() 
+      });
       if (await updateUsers(users)) {
         showMessage("registerMessage", "🎉 Đăng ký thành công! Bạn có thể đăng nhập ngay.", true);
         document.getElementById("regUsername").value = "";
@@ -633,7 +640,7 @@
       return true;
     }
 
-    // ================== FARMING FUNCTIONS - ĐÃ SỬA THEO YÊU CẦU ==================
+    // ================== FARMING FUNCTIONS ==================
     function initPlots() {
       plots = [
         { id: 0, planted: false, type: null, daysGrown: 0, wateredToday: false, fertilizedToday: false },
@@ -742,32 +749,33 @@
       saveUserData();
     }
 
-    // Hàm mới: Tưới + Bón phân cho toàn vườn một lần → +1 ngày nếu đủ cả 2 việc
+    // Nút chính: Chỉ bấm được 1 lần mỗi ngày
     function dailyWaterAndFertilize() {
-      let anyAction = false;
+      const today = new Date().toISOString().split('T')[0];
+
+      if (currentUser && currentUser.lastActionDate === today) {
+        alert("Hôm nay bạn đã tưới và bón phân cho toàn vườn rồi!");
+        return;
+      }
+
+      let anyPlanted = false;
       plots.forEach(plot => {
         if (plot.planted) {
-          if (!plot.wateredToday) {
-            plot.wateredToday = true;
-            anyAction = true;
-          }
-          if (!plot.fertilizedToday) {
-            plot.fertilizedToday = true;
-            anyAction = true;
-          }
-          // Chỉ tăng ngày khi đã có đủ cả 2 việc
-          if (plot.wateredToday && plot.fertilizedToday) {
-            plot.daysGrown += 1;
-          }
+          plot.wateredToday = true;
+          plot.fertilizedToday = true;
+          plot.daysGrown += 1;
+          anyPlanted = true;
         }
       });
 
-      if (anyAction) {
-        alert("💧 Tưới nước & Bón phân thành công cho toàn vườn!\n\n+1 ngày tiến độ cho các cây đã hoàn thành đủ nhiệm vụ.");
+      if (currentUser) currentUser.lastActionDate = today;
+
+      if (anyPlanted) {
+        alert("✅ Đã tưới nước và bón phân cho toàn vườn!\n\nTất cả cây đã tiến bộ +1 ngày.");
       } else {
-        alert("Bạn đã tưới và bón phân hôm nay rồi!");
+        alert("✅ Đã thực hiện xong!\n\nHiện tại không có cây nào.");
       }
-      
+
       renderFarming();
       saveUserData();
     }
