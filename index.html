@@ -163,7 +163,7 @@
       cursor: pointer;
     }
 
-    /* 2048 */
+    /* 2048 - ĐÃ TỐI ƯU RESPONSIVE */
     .score-board {
       display: flex; justify-content: space-between; width: 100%; max-width: 420px;
       margin-bottom: 15px; color: white; font-size: 1.4rem;
@@ -181,8 +181,9 @@
       background: #cdc1b4;
       padding: 10px;
       border-radius: 10px;
-      width: 400px;
-      height: 400px;
+      width: 100%;
+      max-width: 420px;
+      aspect-ratio: 1 / 1;
       margin: 0 auto;
     }
 
@@ -190,8 +191,8 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 35px; font-weight: bold; border-radius: 8px;
       background: #eee4da; color: #776e65;
-      width: 85px;
-      height: 85px;
+      width: 100%;
+      height: 100%;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       flex-shrink: 0;
     }
@@ -241,11 +242,6 @@
     }
     .action-btn:disabled { opacity:0.5; cursor:not-allowed; background:#999; }
 
-    .daily-btn {
-      background:#28a745; width:100%; max-width:520px; margin:25px auto 15px;
-      padding:15px; font-size:17px; border:none; border-radius:50px; color:white; cursor:pointer;
-    }
-
     .modal {
       position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65);
       display:none; align-items:center; justify-content:center; z-index:2000;
@@ -254,13 +250,46 @@
       background:white; color:#333; padding:25px; border-radius:20px; max-width:400px; width:90%;
     }
 
+    /* TỐI ƯU MOBILE - responsive hoàn chỉnh */
     @media (max-width: 768px) {
       .container { flex-direction: column; max-width: 420px; }
       .form-wrapper { width: 100%; padding: 45px 30px; }
       .overlay { display: none; }
-      .grid { width: 360px; height: 360px; gap: 8px; padding: 8px; }
-      .tile { width: 76px; height: 76px; font-size: 29px; }
       .farm-container { grid-template-columns: 1fr; }
+      .user-info {
+        top: 15px;
+        right: 15px;
+        padding: 8px 14px;
+        font-size: 14px;
+        gap: 8px;
+      }
+      .user-info button {
+        padding: 5px 12px;
+        font-size: 13px;
+      }
+      .score-board {
+        font-size: 1.25rem;
+      }
+    }
+
+    /* Siêu nhỏ (điện thoại cũ) */
+    @media (max-width: 480px) {
+      .grid {
+        padding: 8px;
+        gap: 8px;
+      }
+      .tile {
+        font-size: 29px;
+      }
+      .tile-128 { font-size: 24px; }
+      .tile-256, .tile-512, .tile-1024, .tile-2048 { 
+        font-size: 23px; 
+      }
+      .plot {
+        min-height: 170px;
+        padding: 12px;
+      }
+      .crop-visual { font-size: 62px; }
     }
   </style>
 </head>
@@ -285,7 +314,7 @@
       <button onclick="logout()">Đăng xuất</button>
     </div>
 
-    <div style="width:100%; max-width:440px;">
+    <div style="width:100%; max-width: min(440px, 95vw);">
       <div class="score-board">
         <div><strong>2048</strong></div>
         <div>Điểm: <span id="score">0</span></div>
@@ -316,12 +345,6 @@
 
     <h2 style="color:white; margin:75px 0 20px;">🌱 Vườn Của Tôi</h2>
     <div class="farm-container" id="farmContainer"></div>
-
-    <button class="daily-btn" onclick="dailyWaterAndFertilize()">💧 Tưới & Bón phân cho toàn vườn</button>
-    
-    <div style="font-size:14px; max-width:520px; opacity:0.95; color:white;">
-      Mỗi ngày chỉ được thực hiện một lần. Hoàn thành cả tưới và bón phân sẽ +1 ngày tiến độ cho cây.
-    </div>
   </div>
 
   <!-- Modal trồng cây -->
@@ -721,9 +744,18 @@
       saveUserData();
     }
 
+    // === HÀM MỚI: Tăng tiến độ khi đủ TƯỚI + BÓN (chỉ 1 lần/ngày) ===
+    function checkAndIncrementProgress(i) {
+      const p = plots[i];
+      if (p.planted && p.wateredToday && p.fertilizedToday) {
+        p.daysGrown += 1;
+      }
+    }
+
     function waterPlot(i) {
       if (plots[i].wateredToday) return;
       plots[i].wateredToday = true;
+      checkAndIncrementProgress(i);   // ← tự động +1 ngày nếu đủ cả 2 việc
       renderFarming();
       saveUserData();
     }
@@ -731,6 +763,7 @@
     function fertilizePlot(i) {
       if (plots[i].fertilizedToday) return;
       plots[i].fertilizedToday = true;
+      checkAndIncrementProgress(i);   // ← tự động +1 ngày nếu đủ cả 2 việc
       renderFarming();
       saveUserData();
     }
@@ -745,37 +778,6 @@
       }
       alert(`🎉 Thu hoạch thành công ${crop.name}!`);
       plots[i] = { id: i, planted: false, type: null, daysGrown: 0, wateredToday: false, fertilizedToday: false };
-      renderFarming();
-      saveUserData();
-    }
-
-    // Nút chính: Chỉ bấm được 1 lần mỗi ngày
-    function dailyWaterAndFertilize() {
-      const today = new Date().toISOString().split('T')[0];
-
-      if (currentUser && currentUser.lastActionDate === today) {
-        alert("Hôm nay bạn đã tưới và bón phân cho toàn vườn rồi!");
-        return;
-      }
-
-      let anyPlanted = false;
-      plots.forEach(plot => {
-        if (plot.planted) {
-          plot.wateredToday = true;
-          plot.fertilizedToday = true;
-          plot.daysGrown += 1;
-          anyPlanted = true;
-        }
-      });
-
-      if (currentUser) currentUser.lastActionDate = today;
-
-      if (anyPlanted) {
-        alert("✅ Đã tưới nước và bón phân cho toàn vườn!\n\nTất cả cây đã tiến bộ +1 ngày.");
-      } else {
-        alert("✅ Đã thực hiện xong!\n\nHiện tại không có cây nào.");
-      }
-
       renderFarming();
       saveUserData();
     }
@@ -799,6 +801,20 @@
       } else {
         plots = currentUser.plots;
       }
+
+      // === TỰ ĐỘNG RESET MỖI NGÀY MỚI (không cần nút "Tưới & Bón tất cả" nữa) ===
+      const today = new Date().toISOString().split('T')[0];
+      if (!currentUser.lastActionDate || currentUser.lastActionDate !== today) {
+        plots.forEach(plot => {
+          if (plot.planted) {
+            plot.wateredToday = false;
+            plot.fertilizedToday = false;
+          }
+        });
+        currentUser.lastActionDate = today;
+        saveUserData();
+      }
+
       renderFarming();
     }
 
